@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block title %}Tags — {{ config.SITE_NAME }}{% endblock %}
+
+{% block content %}
+<h1 class="tag-heading">Tags</h1>
+
+<div class="tags-cloud">
+    {% for tag in tags %}
+    <a href="{{ url_for('public.tag_posts', slug=tag.slug) }}" class="tag tag-large">
+        {{ tag.name }} <span class="tag-count">{{ tag.posts | selectattr('is_published') | list | length }}</span>
+    </a>
+    {% else %}
+    <p class="empty-state">No tags yet.</p>
+    {% endfor %}
+</div>
+{% endblock %}

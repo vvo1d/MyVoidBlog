@@ -1,0 +1,17 @@
+<header class="site-header">
+    <div class="container header-inner">
+        <a href="{{ url_for('public.index') }}" class="site-logo">{{ config.SITE_NAME }}</a>
+        <nav class="site-nav">
+            <a href="{{ url_for('public.index') }}">Посты</a>
+            <a href="{{ url_for('public.tags_page') }}">Теги</a>
+            {% if current_user.is_authenticated %}
+            <a href="{{ url_for('admin.dashboard') }}">Админка</a>
+            <a href="{{ url_for('admin.logout') }}">Выйти</a>
+            {% endif %}
+            <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+                <span class="icon-moon">&#9789;</span>
+                <span class="icon-sun">&#9788;</span>
+            </button>
+        </nav>
+    </div>
+</header>

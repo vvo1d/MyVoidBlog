@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'Редактирование' if post else 'Новый пост' }} — {{ config.SITE_NAME }}{% endblock %}
+
+{% block content %}
+<div class="editor-page">
+    <form method="POST"
+          action="{{ url_for('admin.edit_post', post_id=post.id) if post else url_for('admin.new_post') }}"
+          id="editor-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" id="cover_image" name="cover_image"
+               value="{{ post.cover_image if post else '' }}">
+
+        <!-- Top bar -->
+        <div class="editor-topbar">
+            <input type="text" id="title" name="title" class="editor-title-input"
+                   placeholder="Заголовок поста..."
+                   value="{{ post.title if post else '' }}" required>
+            <div class="editor-topbar-actions">
+                {% if not post %}
+                <form method="POST" action="{{ url_for('admin.import_md') }}" enctype="multipart/form-data" class="inline-form" id="import-form">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <label class="btn btn-sm">
+                        Импорт .md
+                        <input type="file" name="file" accept=".md" hidden onchange="document.getElementById('import-form').submit()">
+                    </label>
+                </form>
+                {% endif %}
+                <label class="checkbox-label">
+                    <input type="checkbox" name="is_published"
+                           {{ 'checked' if post and post.is_published }}>
+                    Опубликован
+                </label>
+                <button type="submit" class="btn btn-primary btn-sm">Сохранить</button>
+                <a href="{{ url_for('admin.dashboard') }}" class="btn btn-sm">Отмена</a>
+            </div>
+        </div>
+
+        <!-- Meta row -->
+        <div class="editor-meta">
+            <div class="editor-meta-field">
+                <label for="tags">Теги</label>
+                <input type="text" id="tags" name="tags" placeholder="python, flask, ..."
+                       value="{{ post.tags | map(attribute='name') | join(', ') if post else '' }}">
+            </div>
+            <div class="editor-meta-field editor-cover-field">
+                <label>Обложка</label>
+                <div class="cover-upload" id="cover-upload">
+                    <div class="cover-preview" id="cover-preview"
+                         {% if post and post.cover_image %}style="display:block"{% endif %}>
+                        {% if post and post.cover_image %}
+                        <img src="{{ post.cover_image }}" alt="Обложка" id="cover-img">
+                        {% else %}
+                        <img src="" alt="Обложка" id="cover-img" style="display:none">
+                        {% endif %}
+                        <button type="button" class="cover-remove" id="cover-remove">&times;</button>
+                    </div>
+                    <div class="cover-dropzone" id="cover-dropzone"
+                         {% if post and post.cover_image %}style="display:none"{% endif %}>
+                        <span>Перетащите изображение или нажмите</span>
+                        <input type="file" id="cover-file" accept="image/jpeg,image/png,image/webp" hidden>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Editor tabs -->
+        <div class="editor-container">
+            <div class="editor-tabs">
+                <button type="button" class="editor-tab active" data-tab="write">Редактор</button>
+                <button type="button" class="editor-tab" data-tab="preview">Предпросмотр</button>
+                <div class="editor-toolbar-inline">
+                    <button type="button" class="toolbar-btn" onclick="insertBold()" title="Жирный"><b>B</b></button>
+                    <button type="button" class="toolbar-btn" onclick="insertItalic()" title="Курсив"><i>I</i></button>
+                    <button type="button" class="toolbar-btn" onclick="insertHeading()" title="Заголовок">H</button>
+                    <button type="button" class="toolbar-btn" onclick="insertLink()" title="Ссылка">&#128279;</button>
+                    <button type="button" class="toolbar-btn" onclick="insertImage()" title="Изображение">&#128247;</button>
+                    <button type="button" class="toolbar-btn" onclick="insertCode()" title="Код">&lt;/&gt;</button>
+                    <button type="button" class="toolbar-btn" onclick="insertList()" title="Список">&#8226;</button>
+                    <button type="button" class="toolbar-btn" onclick="insertQuote()" title="Цитата">&ldquo;</button>
+                </div>
+            </div>
+
+            <div class="editor-body">
+                <div class="editor-write-pane active" id="pane-write">
+                    <textarea id="body_md" name="body_md">{{ imported_content if imported_content is defined and imported_content else (post.body_md if post else '') }}</textarea>
+                </div>
+                <div class="editor-preview-pane" id="pane-preview">
+                    <div id="preview" class="preview-rendered"></div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="{{ url_for('static', filename='js/preview.js') }}"></script>
+{% endblock %}
