@@ -139,6 +139,9 @@ img { max-width: 100%; height: auto; }
 [data-theme="dark"] .theme-toggle .icon-sun { display: block; }
 [data-theme="dark"] .theme-toggle .icon-moon { display: none; }
 
+/* ===== Smooth scroll ===== */
+html { scroll-behavior: smooth; }
+
 /* ===== Scroll offset for sticky header ===== */
 .post-content h2[id],
 .post-content h3[id],
