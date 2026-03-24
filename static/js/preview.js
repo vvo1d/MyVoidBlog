@@ -1,10 +1,25 @@
 /**
  * Editor: tab switching, live preview, toolbar, cover upload, image drag-and-drop.
+ * All text insertions use insertText() to preserve browser undo (Ctrl+Z).
  */
 (function () {
     const textarea = document.getElementById('body_md');
     const preview = document.getElementById('preview');
     if (!textarea) return;
+
+    // --- Undo-safe text insertion ---
+    function insertText(text) {
+        textarea.focus();
+        document.execCommand('insertText', false, text);
+        updatePreview();
+    }
+
+    function replaceRange(start, end, text) {
+        textarea.focus();
+        textarea.setSelectionRange(start, end);
+        document.execCommand('insertText', false, text);
+        updatePreview();
+    }
 
     // --- Marked config ---
     if (typeof marked !== 'undefined') {
@@ -125,10 +140,9 @@
             .then(r => r.json())
             .then(data => {
                 if (data.url) {
-                    const md = '\n![' + file.name + '](' + data.url + ')\n';
-                    const pos = textarea.selectionStart;
-                    textarea.value = textarea.value.slice(0, pos) + md + textarea.value.slice(pos);
-                    updatePreview();
+                    var md = '\n![' + file.name + '](' + data.url + ')\n';
+                    textarea.setSelectionRange(textarea.selectionStart, textarea.selectionStart);
+                    insertText(md);
                 }
             });
     }
@@ -141,39 +155,32 @@
     window.insertList = function () { insertAtLineStart('- '); };
     window.insertQuote = function () { insertAtLineStart('> '); };
 
-    window.insertLink = function () {
-        var url = prompt('Введите URL:');
-        if (url) wrapSelection('[', '](' + url + ')');
-    };
-
     window.insertImage = function () {
         var url = prompt('URL изображения:');
         if (url) {
-            var pos = textarea.selectionStart;
-            var md = '![](' + url + ')';
-            textarea.value = textarea.value.slice(0, pos) + md + textarea.value.slice(pos);
-            updatePreview();
+            insertText('![](' + url + ')');
         }
+    };
+
+    window.insertLink = function () {
+        var url = prompt('Введите URL:');
+        if (url) wrapSelection('[', '](' + url + ')');
     };
 
     function wrapSelection(before, after) {
         var start = textarea.selectionStart;
         var end = textarea.selectionEnd;
         var selected = textarea.value.slice(start, end) || 'text';
-        textarea.value = textarea.value.slice(0, start) + before + selected + after + textarea.value.slice(end);
-        textarea.selectionStart = start + before.length;
-        textarea.selectionEnd = start + before.length + selected.length;
-        textarea.focus();
-        updatePreview();
+        var replacement = before + selected + after;
+        replaceRange(start, end, replacement);
+        textarea.setSelectionRange(start + before.length, start + before.length + selected.length);
     }
 
     function insertAtLineStart(prefix) {
         var start = textarea.selectionStart;
         var lineStart = textarea.value.lastIndexOf('\n', start - 1) + 1;
-        textarea.value = textarea.value.slice(0, lineStart) + prefix + textarea.value.slice(lineStart);
-        textarea.selectionStart = textarea.selectionEnd = start + prefix.length;
-        textarea.focus();
-        updatePreview();
+        replaceRange(lineStart, lineStart, prefix);
+        textarea.setSelectionRange(start + prefix.length, start + prefix.length);
     }
 
     // --- Keyboard shortcuts ---
@@ -188,10 +195,7 @@
         // Tab inserts spaces
         if (e.key === 'Tab') {
             e.preventDefault();
-            var s = textarea.selectionStart;
-            textarea.value = textarea.value.slice(0, s) + '    ' + textarea.value.slice(s);
-            textarea.selectionStart = textarea.selectionEnd = s + 4;
-            updatePreview();
+            insertText('    ');
         }
     });
 })();

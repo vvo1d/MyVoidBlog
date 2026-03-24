@@ -8,7 +8,11 @@
       "Bash(FLASK_APP=app.py python -c \"from app import create_app; app = create_app\\(\\); print\\(''App created OK''\\)\")",
       "Bash(./venv/bin/python -c \"from app import create_app; app = create_app\\(\\); print\\(''App created OK''\\)\")",
       "Bash(FLASK_APP=app.py ./venv/bin/flask --help)",
-      "Bash(./venv/bin/python -c \":*)"
+      "Bash(./venv/bin/python -c \":*)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://127.0.0.1:8001/admin/login)",
+      "Bash(curl -sv http://127.0.0.1:8001/admin/login -X POST -d \"username=admin&password=admin\")",
+      "Bash(curl -sv -L -c /tmp/cookies.txt http://127.0.0.1:8001/admin/)",
+      "Bash(./venv/bin/python --version)"
     ]
   }
 }

@@ -11,7 +11,7 @@ class Config:
 
     SECRET_KEY: str = os.environ.get("SECRET_KEY", "change-me-in-production")
     SQLALCHEMY_DATABASE_URI: str = os.environ.get(
-        "DATABASE_URL", f"sqlite:///{basedir / 'blog.db'}"
+        "DATABASE_URL", f"sqlite:///{basedir / 'instance' / 'blog.db'}"
     )
     SQLALCHEMY_TRACK_MODIFICATIONS: bool = False
 
