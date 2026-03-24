@@ -3,6 +3,15 @@
 {% block title %}{{ config.SITE_NAME }}{% endblock %}
 
 {% block content %}
+<!-- Search -->
+<div class="search-wrapper">
+    <div class="search-box">
+        <input type="text" id="search-input" placeholder="Поиск по постам..." autocomplete="off">
+        <span class="search-icon">&#128269;</span>
+    </div>
+    <div class="search-results" id="search-results"></div>
+</div>
+
 <div class="post-list">
     {% for post in posts %}
     <article class="post-card">
@@ -15,9 +24,15 @@
             <h2 class="post-card-title">
                 <a href="{{ url_for('public.post_detail', slug=post.slug) }}">{{ post.title }}</a>
             </h2>
-            <time class="post-date" datetime="{{ post.created_at.isoformat() }}">
-                {{ post.created_at | ru_date('short') }}
-            </time>
+            <div class="post-card-meta">
+                <time class="post-date" datetime="{{ post.created_at.isoformat() }}">
+                    {{ post.created_at | ru_date('short') }}
+                </time>
+                <span class="post-meta-sep">&middot;</span>
+                <span class="post-reading-time">{{ post.reading_time or 1 }} мин</span>
+                <span class="post-meta-sep">&middot;</span>
+                <span class="post-views-small">{{ post.view_count or 0 }} &#128065;</span>
+            </div>
             <p class="post-summary">{{ post.summary }}</p>
             <div class="post-tags">
                 {% for tag in post.tags %}
@@ -27,19 +42,66 @@
         </div>
     </article>
     {% else %}
-    <p class="empty-state">No posts yet.</p>
+    <p class="empty-state">Постов пока нет.</p>
     {% endfor %}
 </div>
 
 {% if pagination.pages > 1 %}
 <nav class="pagination">
     {% if pagination.has_prev %}
-    <a href="{{ url_for('public.index', page=pagination.prev_num) }}" class="btn">&larr; Newer</a>
+    <a href="{{ url_for('public.index', page=pagination.prev_num) }}" class="btn">&larr; Новее</a>
     {% endif %}
-    <span class="page-info">Page {{ pagination.page }} of {{ pagination.pages }}</span>
+    <span class="page-info">Страница {{ pagination.page }} из {{ pagination.pages }}</span>
     {% if pagination.has_next %}
-    <a href="{{ url_for('public.index', page=pagination.next_num) }}" class="btn">Older &rarr;</a>
+    <a href="{{ url_for('public.index', page=pagination.next_num) }}" class="btn">Старее &rarr;</a>
     {% endif %}
 </nav>
 {% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+    var input = document.getElementById('search-input');
+    var results = document.getElementById('search-results');
+    var timer;
+
+    input.addEventListener('input', function() {
+        clearTimeout(timer);
+        var q = input.value.trim();
+        if (q.length < 2) { results.innerHTML = ''; results.classList.remove('active'); return; }
+        timer = setTimeout(function() {
+            fetch('/search?q=' + encodeURIComponent(q))
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (!data.length) {
+                    results.innerHTML = '<div class="search-empty">Ничего не найдено</div>';
+                    results.classList.add('active');
+                    return;
+                }
+                results.innerHTML = data.map(function(p) {
+                    return '<a href="' + p.url + '" class="search-result-item">' +
+                        '<strong>' + escapeHtml(p.title) + '</strong>' +
+                        '<span>' + escapeHtml(p.summary) + '</span>' +
+                        '</a>';
+                }).join('');
+                results.classList.add('active');
+            });
+        }, 300);
+    });
+
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.search-wrapper')) {
+            results.innerHTML = '';
+            results.classList.remove('active');
+        }
+    });
+
+    function escapeHtml(t) {
+        var d = document.createElement('div');
+        d.textContent = t;
+        return d.innerHTML;
+    }
+})();
+</script>
 {% endblock %}

@@ -7,7 +7,8 @@
       "Bash(source ../venv/bin/activate)",
       "Bash(FLASK_APP=app.py python -c \"from app import create_app; app = create_app\\(\\); print\\(''App created OK''\\)\")",
       "Bash(./venv/bin/python -c \"from app import create_app; app = create_app\\(\\); print\\(''App created OK''\\)\")",
-      "Bash(FLASK_APP=app.py ./venv/bin/flask --help)"
+      "Bash(FLASK_APP=app.py ./venv/bin/flask --help)",
+      "Bash(./venv/bin/python -c \":*)"
     ]
   }
 }

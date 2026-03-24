@@ -62,6 +62,8 @@ class Post(db.Model):  # type: ignore[name-defined]
     summary = db.Column(db.String(300), default="")
     cover_image = db.Column(db.String(300), default="")
     is_published = db.Column(db.Boolean, default=False, index=True)
+    view_count = db.Column(db.Integer, default=0)
+    reading_time = db.Column(db.Integer, default=1)
     created_at = db.Column(
         db.DateTime, default=lambda: datetime.now(timezone.utc), index=True
     )
@@ -71,7 +73,44 @@ class Post(db.Model):  # type: ignore[name-defined]
         onupdate=lambda: datetime.now(timezone.utc),
     )
     tags = db.relationship("Tag", secondary=post_tags, backref="posts", lazy="select")
+    comments = db.relationship(
+        "Comment", backref="post", lazy="select", cascade="all, delete-orphan",
+        order_by="Comment.created_at",
+    )
 
     def generate_slug(self) -> None:
         """Generate URL-friendly slug from title."""
         self.slug = slugify(self.title)
+
+    def calc_reading_time(self) -> None:
+        """Calculate estimated reading time in minutes."""
+        import re
+
+        text = re.sub(r"<[^>]+>", "", self.body_html or "")
+        words = len(text.split())
+        self.reading_time = max(1, round(words / 200))
+
+
+class PostView(db.Model):  # type: ignore[name-defined]
+    """Tracks unique views per IP per post."""
+
+    id = db.Column(db.Integer, primary_key=True)
+    post_id = db.Column(db.Integer, db.ForeignKey("post.id"), nullable=False)
+    ip = db.Column(db.String(45), nullable=False)
+
+    __table_args__ = (
+        db.UniqueConstraint("post_id", "ip", name="uq_post_view"),
+        db.Index("ix_post_view_post_ip", "post_id", "ip"),
+    )
+
+
+class Comment(db.Model):  # type: ignore[name-defined]
+    """Blog comment model."""
+
+    id = db.Column(db.Integer, primary_key=True)
+    post_id = db.Column(db.Integer, db.ForeignKey("post.id"), nullable=False, index=True)
+    author = db.Column(db.String(80), nullable=False)
+    text = db.Column(db.Text, nullable=False)
+    created_at = db.Column(
+        db.DateTime, default=lambda: datetime.now(timezone.utc), index=True
+    )

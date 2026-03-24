@@ -47,6 +47,9 @@
 
     {% include "partials/footer.html" %}
 
+    <!-- Back to top button -->
+    <button class="back-to-top" id="back-to-top" aria-label="Наверх">&uarr;</button>
+
     <script>
         (function() {
             var btn = document.getElementById('theme-toggle');
@@ -56,6 +59,17 @@
                 var next = current === 'dark' ? 'light' : 'dark';
                 document.documentElement.setAttribute('data-theme', next);
                 localStorage.setItem('theme', next);
+            });
+        })();
+
+        /* Back to top */
+        (function() {
+            var btn = document.getElementById('back-to-top');
+            window.addEventListener('scroll', function() {
+                btn.classList.toggle('visible', window.scrollY > 400);
+            }, { passive: true });
+            btn.addEventListener('click', function() {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
             });
         })();
     </script>

@@ -14,12 +14,33 @@
 {% endblock %}
 
 {% block content %}
+<!-- Reading progress bar -->
+<div class="reading-progress" id="reading-progress"></div>
+
 <article class="post-full">
     <header class="post-header">
         <h1>{{ post.title }}</h1>
-        <time class="post-date" datetime="{{ post.created_at.isoformat() }}">
-            {{ post.created_at | ru_date }}
-        </time>
+        <div class="post-meta">
+            <time class="post-date" datetime="{{ post.created_at.isoformat() }}">
+                {{ post.created_at | ru_date }}
+            </time>
+            <span class="post-meta-sep">&middot;</span>
+            <span class="post-reading-time">{{ post.reading_time or 1 }} мин чтения</span>
+            <span class="post-meta-sep">&middot;</span>
+            {% set v = post.view_count or 0 %}
+            {% set mod100 = v % 100 %}
+            {% set mod10 = v % 10 %}
+            {% if mod100 >= 11 and mod100 <= 19 %}
+                {% set suffix = 'просмотров' %}
+            {% elif mod10 == 1 %}
+                {% set suffix = 'просмотр' %}
+            {% elif mod10 >= 2 and mod10 <= 4 %}
+                {% set suffix = 'просмотра' %}
+            {% else %}
+                {% set suffix = 'просмотров' %}
+            {% endif %}
+            <span class="post-views">{{ v }} {{ suffix }}</span>
+        </div>
         <div class="post-tags">
             {% for tag in post.tags %}
             <a href="{{ url_for('public.tag_posts', slug=tag.slug) }}" class="tag">{{ tag.name }}</a>
@@ -43,32 +64,205 @@
         </div>
     </div>
 </article>
+
+<!-- Related posts -->
+{% if related %}
+<section class="related-posts">
+    <h2>Читайте также</h2>
+    <div class="related-grid">
+        {% for rp in related %}
+        <a href="{{ url_for('public.post_detail', slug=rp.slug) }}" class="related-card">
+            {% if rp.cover_image %}
+            <img src="{{ rp.cover_image }}" alt="{{ rp.title }}" loading="lazy">
+            {% endif %}
+            <div class="related-card-body">
+                <h3>{{ rp.title }}</h3>
+                <span class="post-date">{{ rp.created_at | ru_date('short') }}</span>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+<!-- Comments -->
+<section class="comments-section" id="comments">
+    <h2>Комментарии <span class="comments-count">({{ post.comments | length }})</span></h2>
+
+    <form class="comment-form" id="comment-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="comment-form-row">
+            <input type="text" name="author" placeholder="Ваше имя" required maxlength="80" class="comment-input">
+        </div>
+        <textarea name="text" placeholder="Ваш комментарий..." required maxlength="5000" rows="4" class="comment-textarea"></textarea>
+        <button type="submit" class="btn btn-primary">Отправить</button>
+    </form>
+
+    <div class="comments-list" id="comments-list">
+        {% for comment in post.comments %}
+        <div class="comment">
+            <div class="comment-header">
+                <strong class="comment-author">{{ comment.author }}</strong>
+                <time class="comment-date">{{ comment.created_at.strftime('%d.%m.%Y %H:%M') }}</time>
+            </div>
+            <p class="comment-text">{{ comment.text }}</p>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+
+<!-- Lightbox -->
+<div class="lightbox" id="lightbox">
+    <button class="lightbox-close" id="lightbox-close">&times;</button>
+    <img src="" alt="" id="lightbox-img">
+</div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-    // Extract TOC from rendered content
-    (function() {
-        const content = document.querySelector('.post-content');
-        const tocContainer = document.getElementById('toc-content');
-        const headings = content.querySelectorAll('h2, h3, h4');
+(function() {
+    /* === TOC generation === */
+    const content = document.querySelector('.post-content');
+    const tocContainer = document.getElementById('toc-content');
+    const headings = content.querySelectorAll('h2[id], h3[id], h4[id]');
 
-        if (headings.length < 2) {
-            document.getElementById('toc').style.display = 'none';
-            return;
-        }
-
+    if (headings.length < 2) {
+        document.getElementById('toc').style.display = 'none';
+    } else {
         const ul = document.createElement('ul');
-        headings.forEach(h => {
+        headings.forEach(function(h) {
             const li = document.createElement('li');
             li.className = 'toc-' + h.tagName.toLowerCase();
             const a = document.createElement('a');
             a.href = '#' + h.id;
-            a.textContent = h.textContent.replace('#', '').trim();
+            a.textContent = h.textContent.replace(/\s*#$/, '').trim();
             li.appendChild(a);
             ul.appendChild(li);
         });
         tocContainer.appendChild(ul);
-    })();
+
+        /* === Active TOC highlighting on scroll === */
+        const tocLinks = tocContainer.querySelectorAll('a');
+        const headingEls = Array.from(headings);
+
+        function updateActiveToc() {
+            var scrollPos = window.scrollY + 120;
+            var current = null;
+            for (var i = 0; i < headingEls.length; i++) {
+                if (headingEls[i].offsetTop <= scrollPos) {
+                    current = headingEls[i];
+                }
+            }
+            tocLinks.forEach(function(link) {
+                link.classList.remove('toc-active');
+            });
+            if (current) {
+                var activeLink = tocContainer.querySelector('a[href="#' + current.id + '"]');
+                if (activeLink) activeLink.classList.add('toc-active');
+            }
+        }
+        window.addEventListener('scroll', updateActiveToc, { passive: true });
+        updateActiveToc();
+    }
+
+    /* === Reading progress bar === */
+    var progressBar = document.getElementById('reading-progress');
+    function updateProgress() {
+        var scrollTop = window.scrollY;
+        var docHeight = document.documentElement.scrollHeight - window.innerHeight;
+        var progress = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
+        progressBar.style.width = progress + '%';
+    }
+    window.addEventListener('scroll', updateProgress, { passive: true });
+
+    /* === Copy code button === */
+    document.querySelectorAll('.post-content pre').forEach(function(pre) {
+        var btn = document.createElement('button');
+        btn.className = 'copy-code-btn';
+        btn.textContent = 'Копировать';
+        btn.addEventListener('click', function() {
+            var code = pre.querySelector('code');
+            var text = code ? code.textContent : pre.textContent;
+            navigator.clipboard.writeText(text).then(function() {
+                btn.textContent = 'Скопировано!';
+                btn.classList.add('copied');
+                setTimeout(function() {
+                    btn.textContent = 'Копировать';
+                    btn.classList.remove('copied');
+                }, 2000);
+            });
+        });
+        pre.style.position = 'relative';
+        pre.appendChild(btn);
+    });
+
+    /* === Lightbox for images === */
+    var lightbox = document.getElementById('lightbox');
+    var lightboxImg = document.getElementById('lightbox-img');
+    var lightboxClose = document.getElementById('lightbox-close');
+
+    document.querySelectorAll('.post-content img').forEach(function(img) {
+        img.style.cursor = 'zoom-in';
+        img.addEventListener('click', function() {
+            lightboxImg.src = img.src;
+            lightboxImg.alt = img.alt;
+            lightbox.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        });
+    });
+
+    function closeLightbox() {
+        lightbox.classList.remove('active');
+        document.body.style.overflow = '';
+    }
+    lightboxClose.addEventListener('click', closeLightbox);
+    lightbox.addEventListener('click', function(e) {
+        if (e.target === lightbox) closeLightbox();
+    });
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') closeLightbox();
+    });
+
+    /* === Comments (AJAX) === */
+    var commentForm = document.getElementById('comment-form');
+    var commentsList = document.getElementById('comments-list');
+    var commentsCount = document.querySelector('.comments-count');
+
+    commentForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        var formData = new FormData(commentForm);
+
+        fetch('{{ url_for("public.add_comment", slug=post.slug) }}', {
+            method: 'POST',
+            body: formData,
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.error) {
+                alert(data.error);
+                return;
+            }
+            var div = document.createElement('div');
+            div.className = 'comment comment-new';
+            div.innerHTML =
+                '<div class="comment-header">' +
+                '<strong class="comment-author">' + escapeHtml(data.author) + '</strong>' +
+                '<time class="comment-date">' + data.created_at + '</time>' +
+                '</div>' +
+                '<p class="comment-text">' + escapeHtml(data.text) + '</p>';
+            commentsList.appendChild(div);
+            commentForm.reset();
+            // Update count
+            var count = commentsList.querySelectorAll('.comment').length;
+            commentsCount.textContent = '(' + count + ')';
+        });
+    });
+
+    function escapeHtml(t) {
+        var d = document.createElement('div');
+        d.textContent = t;
+        return d.innerHTML;
+    }
+})();
 </script>
 {% endblock %}

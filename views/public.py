@@ -2,17 +2,20 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 from flask import (
     Blueprint,
     Response,
     abort,
     current_app,
+    jsonify,
     render_template,
     request,
     url_for,
 )
 
-from models import Post, Tag, db
+from models import Comment, Post, PostView, Tag, db
 
 public = Blueprint("public", __name__)
 
@@ -34,7 +37,91 @@ def index():
 def post_detail(slug: str):
     """Single post page."""
     post = Post.query.filter_by(slug=slug, is_published=True).first_or_404()
-    return render_template("post.html", post=post)
+
+    # Unique view per IP
+    ip = request.remote_addr or "unknown"
+    existing = PostView.query.filter_by(post_id=post.id, ip=ip).first()
+    if not existing:
+        db.session.add(PostView(post_id=post.id, ip=ip))
+        post.view_count = (post.view_count or 0) + 1
+        db.session.commit()
+
+    # Related posts: same tags, excluding current
+    related = []
+    if post.tags:
+        tag_ids = [t.id for t in post.tags]
+        related = (
+            Post.query.filter(
+                Post.id != post.id,
+                Post.is_published == True,
+                Post.tags.any(Tag.id.in_(tag_ids)),
+            )
+            .order_by(Post.created_at.desc())
+            .limit(3)
+            .all()
+        )
+
+    return render_template("post.html", post=post, related=related)
+
+
+@public.route("/post/<slug>/comment", methods=["POST"])
+def add_comment(slug: str):
+    """Add a comment to a post."""
+    post = Post.query.filter_by(slug=slug, is_published=True).first_or_404()
+
+    author = request.form.get("author", "").strip()
+    text = request.form.get("text", "").strip()
+
+    if not author or not text:
+        return jsonify({"error": "Имя и текст обязательны."}), 400
+
+    if len(author) > 80:
+        author = author[:80]
+    if len(text) > 5000:
+        text = text[:5000]
+
+    comment = Comment(post_id=post.id, author=author, text=text)
+    db.session.add(comment)
+    db.session.commit()
+
+    return jsonify({
+        "id": comment.id,
+        "author": comment.author,
+        "text": comment.text,
+        "created_at": comment.created_at.strftime("%d.%m.%Y %H:%M"),
+    })
+
+
+@public.route("/search")
+def search():
+    """Search posts by title and content."""
+    q = request.args.get("q", "").strip()
+    if not q or len(q) < 2:
+        return jsonify([])
+
+    posts = (
+        Post.query.filter(
+            Post.is_published == True,
+            db.or_(
+                Post.title.ilike(f"%{q}%"),
+                Post.body_md.ilike(f"%{q}%"),
+            ),
+        )
+        .order_by(Post.created_at.desc())
+        .limit(10)
+        .all()
+    )
+
+    return jsonify([
+        {
+            "title": p.title,
+            "slug": p.slug,
+            "summary": p.summary[:120],
+            "date": p.created_at.strftime("%d.%m.%Y"),
+            "url": url_for("public.post_detail", slug=p.slug),
+        }
+        for p in posts
+    ])
 
 
 @public.route("/tags")

@@ -186,6 +186,7 @@ def _save_post(post: Post | None):
     post.cover_image = cover_image
     post.is_published = is_published
     post.updated_at = datetime.now(timezone.utc)
+    post.calc_reading_time()
 
     post.tags = [Tag.get_or_create(name) for name in tag_names]
 
