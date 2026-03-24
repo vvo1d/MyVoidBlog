@@ -3,15 +3,6 @@
 {% block title %}{{ config.SITE_NAME }}{% endblock %}
 
 {% block content %}
-<!-- Search -->
-<div class="search-wrapper">
-    <div class="search-box">
-        <input type="text" id="search-input" placeholder="Поиск по постам..." autocomplete="off">
-        <span class="search-icon">&#128269;</span>
-    </div>
-    <div class="search-results" id="search-results"></div>
-</div>
-
 <div class="post-list">
     {% for post in posts %}
     <article class="post-card">
@@ -57,51 +48,4 @@
     {% endif %}
 </nav>
 {% endif %}
-{% endblock %}
-
-{% block scripts %}
-<script>
-(function() {
-    var input = document.getElementById('search-input');
-    var results = document.getElementById('search-results');
-    var timer;
-
-    input.addEventListener('input', function() {
-        clearTimeout(timer);
-        var q = input.value.trim();
-        if (q.length < 2) { results.innerHTML = ''; results.classList.remove('active'); return; }
-        timer = setTimeout(function() {
-            fetch('/search?q=' + encodeURIComponent(q))
-            .then(function(r) { return r.json(); })
-            .then(function(data) {
-                if (!data.length) {
-                    results.innerHTML = '<div class="search-empty">Ничего не найдено</div>';
-                    results.classList.add('active');
-                    return;
-                }
-                results.innerHTML = data.map(function(p) {
-                    return '<a href="' + p.url + '" class="search-result-item">' +
-                        '<strong>' + escapeHtml(p.title) + '</strong>' +
-                        '<span>' + escapeHtml(p.summary) + '</span>' +
-                        '</a>';
-                }).join('');
-                results.classList.add('active');
-            });
-        }, 300);
-    });
-
-    document.addEventListener('click', function(e) {
-        if (!e.target.closest('.search-wrapper')) {
-            results.innerHTML = '';
-            results.classList.remove('active');
-        }
-    });
-
-    function escapeHtml(t) {
-        var d = document.createElement('div');
-        d.textContent = t;
-        return d.innerHTML;
-    }
-})();
-</script>
 {% endblock %}
