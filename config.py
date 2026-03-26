@@ -27,9 +27,9 @@ class Config:
     MAX_CONTENT_LENGTH: int = 16 * 1024 * 1024  # 16 MB
 
     # Pagination
-    POSTS_PER_PAGE: int = 10
+    POSTS_PER_PAGE: int = 12
 
     # Site meta
     SITE_NAME: str = os.environ.get("SITE_NAME", "Void Blog")
-    SITE_URL: str = os.environ.get("SITE_URL", "http://localhost:5000")
+    SITE_URL: str = os.environ.get("SITE_URL", "http://localhost:8001")
     SITE_DESCRIPTION: str = os.environ.get("SITE_DESCRIPTION", "Personal blog")
